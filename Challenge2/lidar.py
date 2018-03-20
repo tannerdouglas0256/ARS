@@ -19,10 +19,11 @@ def drive(speed, steering):
 def getOutput(error):
 	global steeringErrors
 
+	print ("ERROR", error)
 	# PID Constants
-	kP = 5.0		#0.2
+	kP = 0.7		#0.2
 	kI = 0.0	#0.000000001
-	kD = 2.0		#2.5
+	kD = 0		#2.5
 
 
 	# Calculate new PID #PleaseWork!!!
@@ -56,10 +57,7 @@ def callback(data):
 
 	print ("Offset ", data.ranges[780] - data.ranges[300])
 
-	if(data.ranges[540]<0.2):
-		speed = 0.0
-	else:
-		speed = 0.8
+	#Calculate how for of center we are (meters)	
 	error = data.ranges[780] - data.ranges[300]
 
 	# Add to error array
@@ -73,6 +71,16 @@ def callback(data):
 	result = getOutput(error)
 	print("Steering: " + str(result))
 
+	#Determine speed
+	#If center distance is greater than 0.4 meters
+	if(data.ranges[540]>0.4):
+		#speed is absolute value of 1 minus turning angle
+		speed = abs(1 - result)
+		#if speed is less than 0.3 set speed to 0.3 as hard turns will set speed to 0.0
+		if(speed <0.3):
+			speed = 0.3
+	else:
+		speed = data.ranges[540] - 0.2
 	# Send Message with speed and angle
 	drive(speed,result)
 
