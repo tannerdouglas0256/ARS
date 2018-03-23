@@ -75,10 +75,10 @@ def callback(data):
 	#If center distance is greater than 0.4 meters
 	if(data.ranges[540]>0.4):
 		#speed is absolute value of 1 minus turning angle
-		speed = abs(1 - result)
+		speed = 1 - abs(result)
 		#if speed is less than 0.3 set speed to 0.3 as hard turns will set speed to 0.0
-		if(speed <0.3):
-			speed = 0.3
+		if(speed <0.6):
+			speed = 0.6
 	else:
 		speed = data.ranges[540] - 0.2
 	# Send Message with speed and angle
