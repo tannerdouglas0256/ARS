@@ -44,3 +44,26 @@ def getOutput(error):
 			turn = -1
 		return turn
 
+def callback(data):
+	
+	print("DATA: ", data)
+	
+#	if(left_y == 0):
+#		if(left_x == 0):
+#			#go to next operation
+#		if(left_x != 0):
+#			#GO BACK AND RE-ATTEMPT
+#	if(left_y > 0):
+#		#DRIVE FORWARD
+
+def listener():
+	rp.init_node("Driver", anonymous = True)
+	rp.Subscriber(#"CHANGE THIS to our lidar function publisher", LaserScan, callback)
+	#rate = rp.Rate(60)
+	rp.spin()
+	
+if __name__ =="__main__":
+	try:
+		listener()
+	except rp.ROSInterruptException:
+		pass
