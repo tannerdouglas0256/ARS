@@ -78,15 +78,19 @@ def parallel(data):
 	print("Left X Next ", left_x_next)
 
 
-	if(left_y <= 0):	#if object is beyond 90 degrees on left side
-		drive(0.5, 1)
-	else:			#drive normally
-		drive(0.5, left_x)
+#	if(left_y <= 0):	#if object is beyond 90 degrees on left side
+#		drive(0.5, 1)
+#	else:			#drive normally
+#		drive(0.5, left_x)
 	
 	#Find difference in x distances of both objects
-	new_x = left_x + left_x_next
+	#new_x = left_x + left_x_next
+	#drive(0.5, new_x)
 
-	drive(0.5, new_x)
+	if(left_closest_angle >= 90):
+		drive(0.5, left_x_next)
+	else:
+		drive(0.5, left_x)
 
 
 def weave(lidar):
