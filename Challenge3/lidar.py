@@ -11,11 +11,17 @@ bridge = CvBridge()
 pub = rp.Publisher("/vesc/ackermann_cmd_mux/input/navigation", AckermannDriveStamped, queue_size = 10)
 image_right = []
 
+#How close can an object be infront of us before we stop
+full_stop = 0.3
 #Determines what portion of the course we are in
 # 0 = Initial Alignment
 # 1 = Parallel
 # 2 = Weave
-state = 0
+state = 1
+#Remember what side we are weaving on
+# 1 = Right
+# 2 = Left
+substate = 1
 
 def drive(speed, steering):
 	drive_msg_stamped = AckermannDriveStamped()
@@ -51,31 +57,31 @@ def parallel(data):
 	print("Lowest Right value: ", np.amin(laser_right) , "at ", (laser_right.index(np.amin(laser_right))/4), "degrees off center")
 	print("Lowest Left value:  ", np.amin(laser_left) , "at ", (laser_left.index(np.amin(laser_left))/4), "degrees off center")
 	
-	left_closest_dist = np.amin(laser_left)
-	left_closest_angle = laser_left.index(np.amin(laser_left))/4
-	left_angle_offset = 90 - left_closest_angle
+	closest_dist = np.amin(laser_right)
+	closest_angle = laser_right.index(np.amin(laser_right))/4
+	angle_offset = 90 - closest_angle
 
 	#Find next closest object on left side
-	laser_left_second = []
-	laser_left_second += laser_left[0:(left_closest_angle)]
-	print("Second Left value:  ", np.amin(laser_left_second) , "at ", (laser_left_second.index(np.amin(laser_left_second))/4), "degrees off center")
-	left_second_dist = np.amin(laser_left_second)
-	left_second_angle = laser_left_second.index(np.amin(laser_left_second))/4
-	left_second_offset = 90 - left_second_angle
+	laser_second = []
+	laser_second += laser_right[0:(closest_angle)]
+	print("Second value:  ", np.amin(laser_second) , "at ", (laser_second.index(np.amin(laser_second))/4), "degrees off center")
+	second_dist = np.amin(laser_second)
+	second_angle = laser_second.index(np.amin(laser_second))/4
+	second_offset = 90 - second_angle
 	
 	#Position on LEFT
-	left_y = left_closest_dist * math.sin(math.radians(left_angle_offset/4))
-	temp_left_x = left_closest_dist * math.cos(math.radians(left_angle_offset/4))
-	left_x = temp_left_x - 0.635
-	print("LEFT Y ", left_y)
-	print("LEFT X ", left_x)
+	y = closest_dist * math.sin(math.radians(angle_offset/4))
+	temp_x = closest_dist * math.cos(math.radians(angle_offset/4))
+	x = temp_x - 0.635
+	print("Y ", y)
+	print("X ", x)
 
 	#Next position on left
-	left_y_next = left_second_dist * math.sin(math.radians(left_second_offset/4))
-	left_x_next_temp = left_second_dist * math.cos(math.radians(left_second_offset/4))
-	left_x_next = left_x_next_temp - 0.635
-	print("Left Y Next ", left_y_next)
-	print("Left X Next ", left_x_next)
+	y_next = second_dist * math.sin(math.radians(second_offset/4))
+	x_next_temp = second_dist * math.cos(math.radians(second_offset/4))
+	x_next = x_next_temp - 0.635
+	print("Y Next ", y_next)
+	print("X Next ", x_next)
 
 
 #	if(left_y <= 0):	#if object is beyond 90 degrees on left side
@@ -87,31 +93,52 @@ def parallel(data):
 	#new_x = left_x + left_x_next
 	#drive(0.5, new_x)
 
-	if(left_closest_angle >= 90):
-		drive(0.5, left_x_next)
+	if(closest_angle >= 90):
+		drive(0.5, x_next)
 	else:
-		drive(0.5, left_x)
+		drive(0.5, x)
 
 
-def weave(lidar):
+def weave(data):
 	#Weave thru cones
-	x =1
+	#Define lists for left and right side of lidar/car	
+	laser_right_temp = []
+	laser_right = []
+	laser_left = []
+	
+	#Append data from lidar to lists
+	laser_right_temp += data.ranges[20:540]
+	laser_left += data.ranges[541:1060]
+	
+	
+
+	if(substate == 1):
+		#weave on left side
+		x = 1
+	if(substate == 2):
+		#weave on right side
+		x = 1
+
 def lidar(data):
+	#Callback for lidar
 
-	parallel(data)	
+	#Full stop
+	#Define list for center of car
+	center = []
+	#Append data from lidar to list
+	center += data.ranges[420:660]	#105 degrees to 165 degrees
+	#Find closest object
+	center_closest_dist = np.amin(center)
+	#Check if closest object is too close
+	if(center_closest_dist <= full_stop):
+		drive(0,0)
+	else:
+	#Drive normally if no objects too close
+		if(state == 1):
+			parallel(data)	
+		if(state == 2):
+			weave(data)
 	
-#	if(left_y == 0):
-#		if(left_x == 0):
-#			#go to next operation
-#			state = 1
-#		if(left_x != 0):
-#			#GO BACK AND RE-ATTEMPT
-#			drive(-2, 0)
-#	if(left_y > 0):
-#		#DRIVE FORWARD
-#		drive(left_y, left_x)
-	
-
 def listener():
 	rp.init_node("Challenge3", anonymous = True)
 	rp.Subscriber("zedRight", Image, zedCam)
