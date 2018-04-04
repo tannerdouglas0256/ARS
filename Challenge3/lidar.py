@@ -17,11 +17,11 @@ full_stop = 0.3
 # 0 = Initial Alignment
 # 1 = Parallel
 # 2 = Weave
-state = 1
+state = 2
 #Remember what side we are weaving on
 # 1 = Right
 # 2 = Left
-substate = 1
+substate = 2
 
 def drive(speed, steering):
 	drive_msg_stamped = AckermannDriveStamped()
@@ -69,30 +69,20 @@ def parallel(data):
 	second_angle = laser_second.index(np.amin(laser_second))/4
 	second_offset = 90 - second_angle
 	
-	#Position on LEFT
+	#Closest Position
 	y = closest_dist * math.sin(math.radians(angle_offset/4))
 	temp_x = closest_dist * math.cos(math.radians(angle_offset/4))
 	x = temp_x - 0.635
 	print("Y ", y)
 	print("X ", x)
 
-	#Next position on left
+	#Next position
 	y_next = second_dist * math.sin(math.radians(second_offset/4))
 	x_next_temp = second_dist * math.cos(math.radians(second_offset/4))
 	x_next = x_next_temp - 0.635
 	print("Y Next ", y_next)
 	print("X Next ", x_next)
-
-
-#	if(left_y <= 0):	#if object is beyond 90 degrees on left side
-#		drive(0.5, 1)
-#	else:			#drive normally
-#		drive(0.5, left_x)
 	
-	#Find difference in x distances of both objects
-	#new_x = left_x + left_x_next
-	#drive(0.5, new_x)
-
 	if(closest_angle >= 90):
 		drive(0.5, x_next)
 	else:
@@ -110,14 +100,44 @@ def weave(data):
 	laser_right_temp += data.ranges[20:540]
 	laser_left += data.ranges[541:1060]
 	
-	
+	#Reverse list so that right side is measured from center
+	laser_right += laser_right_temp[::-1]
 
+	print("Lowest Right value: ", np.amin(laser_right) , "at ", (laser_right.index(np.amin(laser_right))/4), "degrees off center")
 	if(substate == 1):
 		#weave on left side
-		x = 1
+		closest_dist = np.amin(laser_right)
+		closest_angle = laser_right.index(np.amin(laser_right))/4
+		angle_offset = 90 - closest_angle
+	
+		y = closest_dist * math.sin(math.radians(angle_offset/4))
+		temp_x = closest_dist * math.cos(math.radians(angle_offset/4))
+		x = temp_x - 0.635
+
+		print("Y ", y)
+		print("X ", x)
+
+		if(y <= 0):	#if object is beyond 90 degrees on left side
+			drive(0.5, -1)
+		else:			#drive normally
+			drive(0.5, (x * -1))		
+
 	if(substate == 2):
 		#weave on right side
-		x = 1
+		closest_dist = np.amin(laser_left)
+		closest_angle = laser_left.index(np.amin(laser_left))/4
+		angle_offset = 90 - closest_angle
+	
+		y = closest_dist * math.sin(math.radians(angle_offset/4))
+		temp_x = closest_dist * math.cos(math.radians(angle_offset/4))
+		x = temp_x - 0.635
+
+		print("Y ", y)
+		print("X ", x)
+		if(y <= 0):	#if object is beyond 90 degrees on left side
+			drive(0.5, 1)
+		else:			#drive normally
+			drive(0.5, x)
 
 def lidar(data):
 	#Callback for lidar
