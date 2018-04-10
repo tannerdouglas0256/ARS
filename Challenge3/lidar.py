@@ -17,11 +17,11 @@ full_stop = 0.3
 # 0 = Initial Alignment
 # 1 = Parallel
 # 2 = Weave
-state = 2
+state = 1
 #Remember what side we are weaving on
 # 1 = Right
 # 2 = Left
-substate = 2
+substate = 1
 
 def drive(speed, steering):
 	drive_msg_stamped = AckermannDriveStamped()
@@ -35,6 +35,7 @@ def drive(speed, steering):
 	pub.publish(drive_msg_stamped)
 
 def zedCam(data):
+	global state
 	image_right = bridge.imgmsg_to_cv2(data, desired_encoding = "passthrough")
 	cv2.imshow("", image_right)
 	cv2.waitKey(1)
@@ -84,12 +85,14 @@ def parallel(data):
 	print("X Next ", x_next)
 	
 	if(closest_angle >= 90):
-		drive(0.5, x_next)
+		drive(0.5, (x_next) * -1)
 	else:
-		drive(0.5, x)
+		drive(0.5, (x * -1))
 
 
 def weave(data):
+	global substate
+	print("SUBSTATE: ", substate)
 	#Weave thru cones
 	#Define lists for left and right side of lidar/car	
 	laser_right_temp = []
@@ -104,6 +107,7 @@ def weave(data):
 	laser_right += laser_right_temp[::-1]
 
 	print("Lowest Right value: ", np.amin(laser_right) , "at ", (laser_right.index(np.amin(laser_right))/4), "degrees off center")
+
 	if(substate == 1):
 		#weave on left side
 		closest_dist = np.amin(laser_right)
@@ -112,12 +116,18 @@ def weave(data):
 	
 		y = closest_dist * math.sin(math.radians(angle_offset/4))
 		temp_x = closest_dist * math.cos(math.radians(angle_offset/4))
-		x = temp_x - 0.635
+		x = temp_x - 0.3
 
 		print("Y ", y)
 		print("X ", x)
 
-		if(y <= 0):	#if object is beyond 90 degrees on left side
+		#check for new objects on left side
+		closest_dist_left = np.amin(laser_left)
+		if(closest_angle >=90 and closest_dist_left <= 1.0):
+			substate = 2
+		
+		#orbit cone on right
+		if(y <= 0):	#if object is beyond 90 degrees on right side
 			drive(0.5, -1)
 		else:			#drive normally
 			drive(0.5, (x * -1))		
@@ -130,10 +140,17 @@ def weave(data):
 	
 		y = closest_dist * math.sin(math.radians(angle_offset/4))
 		temp_x = closest_dist * math.cos(math.radians(angle_offset/4))
-		x = temp_x - 0.635
+		x = temp_x - 0.3
 
 		print("Y ", y)
 		print("X ", x)
+
+		#check for new objects on right side
+		closest_dist_right = np.amin(laser_right)
+		if(closest_angle >= 90 and closest_dist_right <= 1.0):
+			substate = 1
+
+		#orbit cone on left
 		if(y <= 0):	#if object is beyond 90 degrees on left side
 			drive(0.5, 1)
 		else:			#drive normally
@@ -167,6 +184,7 @@ def listener():
 	
 if __name__ =="__main__":
 	try:
+		#substate = 1
 		listener()
 	except rp.ROSInterruptException:
 		pass
