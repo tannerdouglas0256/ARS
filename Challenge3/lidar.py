@@ -17,7 +17,7 @@ full_stop = 0.3
 # 0 = Initial Alignment
 # 1 = Parallel
 # 2 = Weave
-state = 1
+state = 2
 #Remember what side we are weaving on
 # 1 = Right
 # 2 = Left
@@ -100,31 +100,31 @@ def weave(data):
 	laser_left = []
 	
 	#Append data from lidar to lists
-	laser_right_temp += data.ranges[20:540]
-	laser_left += data.ranges[541:1060]
+	laser_right_temp += data.ranges[20:820] # 5 degrees to 205 degrees
+	laser_left += data.ranges[260:1060] # 65 degrees to 265 degrees
 	
 	#Reverse list so that right side is measured from center
 	laser_right += laser_right_temp[::-1]
-
-	print("Lowest Right value: ", np.amin(laser_right) , "at ", (laser_right.index(np.amin(laser_right))/4), "degrees off center")
 
 	if(substate == 1):
 		#weave on left side
 		closest_dist = np.amin(laser_right)
 		closest_angle = laser_right.index(np.amin(laser_right))/4
-		angle_offset = 90 - closest_angle
+		angle_offset = 140 - closest_angle
 	
 		y = closest_dist * math.sin(math.radians(angle_offset/4))
 		temp_x = closest_dist * math.cos(math.radians(angle_offset/4))
-		x = temp_x - 0.3
+		x = temp_x - 0.5
 
+		print("Distance: ", closest_dist)
+		print("ANGLE: ", closest_angle)
 		print("Y ", y)
 		print("X ", x)
 
 		#check for new objects on left side
 		closest_dist_left = np.amin(laser_left)
-		if(closest_angle >=90 and closest_dist_left <= 1.0):
-			substate = 2
+		if(closest_angle >=140 and closest_dist_left <= 0.7):
+			substate = 1
 		
 		#orbit cone on right
 		if(y <= 0):	#if object is beyond 90 degrees on right side
@@ -136,18 +136,18 @@ def weave(data):
 		#weave on right side
 		closest_dist = np.amin(laser_left)
 		closest_angle = laser_left.index(np.amin(laser_left))/4
-		angle_offset = 90 - closest_angle
+		angle_offset = 140 - closest_angle
 	
 		y = closest_dist * math.sin(math.radians(angle_offset/4))
 		temp_x = closest_dist * math.cos(math.radians(angle_offset/4))
-		x = temp_x - 0.3
+		x = temp_x - 0.5
 
 		print("Y ", y)
 		print("X ", x)
 
 		#check for new objects on right side
 		closest_dist_right = np.amin(laser_right)
-		if(closest_angle >= 90 and closest_dist_right <= 1.0):
+		if(closest_angle >= 140 and closest_dist_right <= 0.7):
 			substate = 1
 
 		#orbit cone on left
