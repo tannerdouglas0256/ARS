@@ -2,6 +2,7 @@ import cv2
 import rospy as rp
 import numpy as np
 import math
+import time
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import LaserScan
 from cv_bridge import CvBridge, CvBridgeError
@@ -22,6 +23,11 @@ state = 2
 # 1 = Right
 # 2 = Left
 substate = 1
+#time passed since last substate change
+time_start = time.time()
+minTime = 2.0
+
+orbit_dist = 1.2
 
 def drive(speed, steering):
 	drive_msg_stamped = AckermannDriveStamped()
@@ -89,10 +95,20 @@ def parallel(data):
 	else:
 		drive(0.5, (x * -1))
 
+def timer():
+	temp = time.time()
+	return temp
 
 def weave(data):
-	global substate
+	global substate, time_start, minTime, orbit_dist
 	print("SUBSTATE: ", substate)
+	print("TIME: ", time_start)
+	temp = timer()
+	print("NEWTIME: ", temp)
+	current_time = timer() - time_start
+	print("CURRENT TIME", current_time)
+	if(current_time >= minTime):
+		print("ABLE TO SWITCH SUBSTATE")
 	#Weave thru cones
 	#Define lists for left and right side of lidar/car	
 	laser_right_temp = []
@@ -120,17 +136,26 @@ def weave(data):
 		print("ANGLE: ", closest_angle)
 		print("Y ", y)
 		print("X ", x)
+		print("TIME: ", time.time())
 
 		#check for new objects on left side
 		closest_dist_left = np.amin(laser_left)
-		if(closest_angle >=140 and closest_dist_left <= 0.7):
-			substate = 1
+		if(closest_angle >=140 and closest_dist_left <= orbit_dist):
+			current_time = timer() - time_start
+			print("CURRENT TIME", current_time)
+			if(current_time >= minTime):
+				substate = 2
+				time_start = timer()
+				
 		
 		#orbit cone on right
-		if(y <= 0):	#if object is beyond 90 degrees on right side
-			drive(0.5, -1)
-		else:			#drive normally
-			drive(0.5, (x * -1))		
+		if(closest_angle <= 100):
+			drive(0.5, 1)
+		else:
+			if(y <= 0):	#if object is beyond 90 degrees on right side
+				drive(0.5, -1)
+			else:			#drive normally
+				drive(0.5, (x * -1))		
 
 	if(substate == 2):
 		#weave on right side
@@ -147,14 +172,21 @@ def weave(data):
 
 		#check for new objects on right side
 		closest_dist_right = np.amin(laser_right)
-		if(closest_angle >= 140 and closest_dist_right <= 0.7):
-			substate = 1
+		if(closest_angle >= 140 and closest_dist_right <= orbit_dist):
+			current_time = timer() - time_start
+			print("CURRENT TIME", current_time)
+			if(current_time >= minTime):
+				substate = 1
+				time_start = timer()			
 
 		#orbit cone on left
-		if(y <= 0):	#if object is beyond 90 degrees on left side
-			drive(0.5, 1)
-		else:			#drive normally
-			drive(0.5, x)
+		if(closest_angle <= 100):
+			drive(0.5, -1)
+		else:
+			if(y <= 0):	#if object is beyond 90 degrees on left side
+				drive(0.5, 1)
+			else:			#drive normally
+				drive(0.5, x)
 
 def lidar(data):
 	#Callback for lidar
@@ -184,7 +216,6 @@ def listener():
 	
 if __name__ =="__main__":
 	try:
-		#substate = 1
 		listener()
 	except rp.ROSInterruptException:
 		pass
