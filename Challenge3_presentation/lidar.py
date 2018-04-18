@@ -5,17 +5,15 @@ import math
 import time
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import LaserScan
-from std_msgs.msg import String
 from cv_bridge import CvBridge, CvBridgeError
 from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 bridge = CvBridge()
 
 pub = rp.Publisher("/vesc/ackermann_cmd_mux/input/navigation", AckermannDriveStamped, queue_size = 10)
-pub1 = rp.Publisher('CVOutput', String, queue_size = 10)
 image_right = []
 
 #How close can an object be infront of us before we stop
-full_stop = 0.3
+full_stop = 0.2
 #Determines what portion of the course we are in
 # 0 = Initial Alignment
 # 1 = Parallel
@@ -31,8 +29,6 @@ minTime = 2.0
 
 orbit_dist = 1.2
 
-check = False
-
 def drive(speed, steering):
 	drive_msg_stamped = AckermannDriveStamped()
 	drive_msg = AckermannDrive()
@@ -45,76 +41,10 @@ def drive(speed, steering):
 	pub.publish(drive_msg_stamped)
 
 def zedCam(data):
-	global state, substate, check
-	cv_img = bridge.imgmsg_to_cv2(data, desired_encoding = "passthrough")
-
-	# Crop the image
-	#crop_img = cv_img[250:675, 50:700]
-	
-	# Uncomment if you want to use original image
-	crop_img = cv_img
-
-	kernel = np.ones((5,5),np.uint8)
-	# Gaussian Blur image
-	crop_img = cv2.GaussianBlur(crop_img, (11,11), 0)
-
-	# Convert RGB image to HSV image
-	hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
-
-	# Grayscale image
-	gray_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
-
-	# Define range of blue color in HSV
-	lower_blue = np.array([10, 235, 80], dtype = "uint8")
-	upper_blue = np.array([30, 255, 255], dtype = "uint8")
-
-	# Mask of blue in the image
-	blue_mask = cv2.inRange(hsv_img, lower_blue, upper_blue)
-	blue_mask = cv2.erode(blue_mask, kernel, iterations = 2)
-	blue_mask = cv2.dilate(blue_mask, kernel, iterations = 2)
-	blue_mask = cv2.dilate(blue_mask, kernel, iterations = 2)
-	blue_mask = cv2.erode(blue_mask, kernel, iterations = 2)
-
-	# Display the resulting frame
-	#cv2.imshow('mask', blue_mask)
-	#cv2.waitKey(1)
-
-	# Color thresholding
-	ret,thresh = cv2.threshold(blue_mask, 10, 255, cv2.THRESH_BINARY)
-
-	# Find the contours of the frame
-	_,contours,hierarchy = cv2.findContours(thresh.copy(), 1, cv2.CHAIN_APPROX_NONE)
-
-	# Find the biggest contour
-	if len(contours) > 0:
-		c = max(contours, key = cv2.contourArea)
-		M = cv2.moments(c)
-
-	cx = int(M['m10']/M['m00'])
-	cy = int(M['m01']/M['m00'])
-
-	cv2.line(crop_img, (cx,0), (cx,720), (255,0,0), 1)
-	cv2.line(crop_img, (0,cy), (1280,cy), (255,0,0), 1)
-	cv2.drawContours(crop_img, contours, -1, (0,0,255), 1)
-
-	print("CY: ", cy)
-	if(cy > 95):
-		if(substate == 1):
-			if(check == True):
-				substate =2
-				check = False
-		elif(substate == 2):
-			if(check == True):
-				substate =1
-				check = False
-	if(cy <= 95):
-		if(check == False):
-			check = True
-		pub1.publish(str(cx))
-
-	# Display the resulting frame
-	#cv2.imshow('frame', crop_img)
-	#cv2.waitKey(1)
+	global state
+	image_right = bridge.imgmsg_to_cv2(data, desired_encoding = "passthrough")
+	cv2.imshow("", image_right)
+	cv2.waitKey(1)
 
 def parallel(data):
 	#Parallels cones
@@ -209,24 +139,23 @@ def weave(data):
 		print("TIME: ", time.time())
 
 		#check for new objects on left side
-		#closest_dist_left = np.amin(laser_left)
-		#if(closest_angle >=140 and closest_dist_left <= orbit_dist):
-		#	current_time = timer() - time_start
-		#	print("CURRENT TIME", current_time)
-		#	if(current_time >= minTime):
-		#		substate = 2
-		#		time_start = timer()
+		closest_dist_left = np.amin(laser_left)
+		if(closest_angle >=140 and closest_dist_left <= orbit_dist):
+			current_time = timer() - time_start
+			print("CURRENT TIME", current_time)
+			if(current_time >= minTime):
+				substate = 2
+				time_start = timer()
 				
 		
 		#orbit cone on right
-		if(closest_dist <= orbit_dist):	#if object is close enough drive/ else do nothing
-			if(closest_angle <= 100):	#if cone is on wrong side
-				drive(0.5, 1)
-			else:
-				if(y <= 0):	#if object is beyond 90 degrees on right side
-					drive(0.5, -1)
-				else:			#drive normally
-					drive(0.5, (x * -1))		
+		if(closest_angle <= 100):
+			drive(0.5, 1)
+		else:
+			if(y <= 0):	#if object is beyond 90 degrees on right side
+				drive(0.5, -1)
+			else:			#drive normally
+				drive(0.5, (x * -1))		
 
 	if(substate == 2):
 		#weave on right side
@@ -238,30 +167,26 @@ def weave(data):
 		temp_x = closest_dist * math.cos(math.radians(angle_offset/4))
 		x = temp_x - 0.5
 
-		print("Distance: ", closest_dist)
-		print("ANGLE: ", closest_angle)
 		print("Y ", y)
 		print("X ", x)
-		print("TIME: ", time.time())
 
 		#check for new objects on right side
-		#closest_dist_right = np.amin(laser_right)
-		#if(closest_angle >= 140 and closest_dist_right <= orbit_dist):
-		#	current_time = timer() - time_start
-		#	print("CURRENT TIME", current_time)
-		#	if(current_time >= minTime):
-		#		substate = 1
-		#		time_start = timer()			
+		closest_dist_right = np.amin(laser_right)
+		if(closest_angle >= 140 and closest_dist_right <= orbit_dist):
+			current_time = timer() - time_start
+			print("CURRENT TIME", current_time)
+			if(current_time >= minTime):
+				substate = 1
+				time_start = timer()			
 
 		#orbit cone on left
-		if(closest_dist <= orbit_dist):	#if object is close enough drive/ else do nothing
-			if(closest_angle <= 100):
-				drive(0.5, -1)
-			else:
-				if(y <= 0):	#if object is beyond 90 degrees on left side
-					drive(0.5, 1)
-				else:			#drive normally
-					drive(0.5, x)
+		if(closest_angle <= 100):
+			drive(0.5, -1)
+		else:
+			if(y <= 0):	#if object is beyond 90 degrees on left side
+				drive(0.5, 1)
+			else:			#drive normally
+				drive(0.5, x)
 
 def lidar(data):
 	#Callback for lidar
