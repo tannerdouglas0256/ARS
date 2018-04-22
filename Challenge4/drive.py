@@ -5,7 +5,9 @@ from std_msgs.msg import String
 pub = rp.Publisher("/vesc/ackermann_cmd_mux/input/navigation", AckermannDriveStamped, queue_size = 10)
 steeringErrorsZed = [0]
 steeringErrorsLidar = [0]
-lidarSteering
+lidarSteering = 0
+zed_result = 0
+angle = 0
 
 def drive(speed, steering):
 	drive_msg_stamped = AckermannDriveStamped()
@@ -29,15 +31,15 @@ def getOutputZed(error):
 
 	# Calculate new PID #PleaseWork!!!
 	while(True):
-		integral = sum(steeringErrors)
+		integral = sum(steeringErrorsZed)
 		#error = 145 - angle
 		integral = integral + error
 		if(error == 0):
 			integral = 0
 		if(abs(error) > 40):
 			integral = 0
-		derivative = error - steeringErrors[-2]
-		steeringErrors += [error]
+		derivative = error - steeringErrorsZed[-2]
+		steeringErrorsZed += [error]
 		speed = (kP * error) + (kI * integral) + (kD * derivative)
 		# Result can only be between -1 and 1
 		if(speed > 1):
@@ -51,23 +53,22 @@ def getOutputLidar(error):
 
 	print ("ERROR", error)
 	# PID Constants
-	kP = 0.7		#0.2
-	kI = 0.0	#0.000000001
-	kD = 0		#2.5
-
+	kP = 0.7
+	kI = 0.0
+	kD = 0.0
 
 	# Calculate new PID #PleaseWork!!!
 	while(True):
-		integral = sum(steeringErrors)
+		integral = sum(steeringErrorsLidar)
 		#error = 145 - angle
 		integral = integral + error
 		if(error == 0):
 			integral = 0
 		if(abs(error) > 40):
 			integral = 0
-		derivative = error - steeringErrors[-2]
-		steeringErrors += [error]
-		turn = (kP * error) + (kI * integral) + (kD * derivative)
+		#derivative = error - steeringErrorsLidar[-2]
+		steeringErrorsLidar += [error]
+		turn = (kP * error) + (kI * integral)# + (kD * derivative)
 		# Result can only be between -1 and 1
 		if(turn > 1):
 			turn = 1
@@ -75,33 +76,41 @@ def getOutputLidar(error):
 			turn = -1
 		return turn
 def followLine(data):
-	global steeringErrors
+	global steeringErrorsZed
 	speed = 0.8
+	global angle
 	angle = float(data.data)
 	error = 300 - angle
 
 	# Add to error array
-	steeringErrors += [error]
+	steeringErrorsZed += [error]
 	
 	# Only store previous 100 errors
-	if(len(steeringErrors)>100):
-		steeringErrors = steeringErrors[1:]
+	if(len(steeringErrorsZed)>100):
+		steeringErrorsZed = steeringErrorsZed[1:]
 	
 	# Send Error to PID
-	result = getOutputZed(error)
+	global zed_result
+	zed_result = getOutputZed(error)
 	print("Angle: " + str(angle))
 	print("Error: " + str(error))
-	print("Steering: " + str(getOutput(error)))
-
-	# Send Message with speed and angle
-	drive(speed,result)
+	print("Steering: " + str(getOutputZed(error)))
 
 def followWall(data):
 	speed = 0.5
-	global lidarSteering = float(data.data)
-	print("STEERING: ", steering)
-	#drive(speed, steering)
+	global lidarSteering, zed_result
 	
+	#print("STEERING: ", steering)
+	if(data.data == "stop"):
+		print("STOP")
+	else:
+		lidarSteering = float(data.data)
+		if(angle):
+			drive(0.5, zed_result)
+		else:
+			print("LIDARSTEERING: ", lidarSteering)
+			lidarOutput = getOutputLidar(lidarSteering)
+			drive(0.5, lidarOutput)	
 
 def listener():
 	rp.init_node("VESC_Steering", anonymous = False)

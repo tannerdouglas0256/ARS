@@ -12,10 +12,10 @@ def callback(data):
 	cv_img = bridge.imgmsg_to_cv2(data, desired_encoding = "passthrough")
 
 	# Crop the image
-	crop_img = cv_img[250:675, 50:700]
+	#crop_img = cv_img[250:675, 50:700]
 	
 	# Uncomment if you want to use original image
-	#crop_img = cv_img
+	crop_img = cv_img
 
 	kernel = np.ones((5,5),np.uint8)
 	# Gaussian Blur image
