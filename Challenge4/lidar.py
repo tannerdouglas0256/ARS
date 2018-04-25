@@ -7,9 +7,9 @@ from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 
 pub = rp.Publisher("Lidar", String, queue_size = 10)
 fullstop = 0.2
-min_gap = 0.4
+min_gap = 0.0
 angle_offset = 140
-x_offset = 0.5
+x_offset = 0.1
 
 def callback(data):
 	global steeringErrors, fullstop, min_gap, angle_offset
@@ -20,8 +20,8 @@ def callback(data):
 	laser_left = []
 	
 	#Append data from lidar to lists
-	laser_right_temp += data.ranges[20:540] # 5 degrees to 135 degrees
-	laser_left += data.ranges[540:1060] # 135 degrees to 265 degrees
+	laser_right_temp += data.ranges[180:540] # 90 degrees to 135 degrees
+	laser_left += data.ranges[540:900] # 135 degrees to 225 degrees
 	
 	#Reverse list so that right side is measured from center
 	laser_right += laser_right_temp[::-1]
@@ -36,8 +36,13 @@ def callback(data):
 	#Check if closest object is too close
 	if(center_closest_dist <= fullstop):
 		error = "stop"
+		print ("STOP", fullstop)
+		print("ERROR: ", center_closest_dist)
+		print("ERROR: ", center.index(np.amin(center)))
+		pub.publish(str(error))		
+
 	else:
-	#Drive normally if no objects too close
+		#Drive normally if no objects too close
 		
 		#Find distance on right
 		closest_dist_right = np.amin(laser_right)
@@ -65,23 +70,26 @@ def callback(data):
 			#if gap is big enough drive thru it
 			if(x_L < x_R):
 				#steer to right of object
-				if(y_R <= 0):	#if object is beyond 90 degrees on right side
-					error = -1
-				else:			#drive normally
-					error = (x_R * -1)
+				#if(y_R <= 0):	#if object is beyond 90 degrees on right side
+				#	error = -1
+				#else:			#drive normally
+				error = (x_R * -1)
 			elif(x_L > x_R):
 				#steer to left of object
-				if(y_L <= 0):	#if object is beyond 90 degrees on left side
-					error = 1
-				else:			#drive normally
-					error = (x_L * 1)
+				#if(y_L <= 0):	#if object is beyond 90 degrees on left side
+				#	error = 1
+				#else:			#drive normally
+				error = (x_L * 1)
 			else:
 				#objects are equidistant from each other... move along, move along....
 				error = 0
 
 			#result = getOutput(error)
 			#print("Steering: " + str(result))
-			pub.publish(str(error))		
+			print("ERROR: ", error)
+			pub.publish(str(error))
+		else:
+			print("DeltaX not working")		
 
 
 

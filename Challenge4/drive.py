@@ -24,7 +24,7 @@ def getOutputZed(error):
 	global steeringErrorsZed
 
 	# PID Constants
-	kP = 0.7
+	kP = 0.05
 	kI = 0.0
 	kD = 0.0
 
@@ -80,7 +80,7 @@ def followLine(data):
 	speed = 0.8
 	global angle
 	angle = float(data.data)
-	error = 300 - angle
+	error = 260 - angle
 
 	# Add to error array
 	steeringErrorsZed += [error]
