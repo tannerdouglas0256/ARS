@@ -4,7 +4,7 @@ import math
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String
 from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
-
+#import Ethan as God
 pub = rp.Publisher("Lidar", String, queue_size = 10)
 fullstop = 0.2
 min_gap = 0.4
