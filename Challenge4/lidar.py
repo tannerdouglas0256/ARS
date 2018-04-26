@@ -6,10 +6,10 @@ from std_msgs.msg import String
 from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 
 pub = rp.Publisher("Lidar", String, queue_size = 10)
-fullstop = 0.2
+fullstop = 0.3
 min_gap = 0.0
 angle_offset = 140
-x_offset = 0.1
+x_offset = 0.0
 
 def callback(data):
 	global steeringErrors, fullstop, min_gap, angle_offset
@@ -89,7 +89,7 @@ def callback(data):
 			print("ERROR: ", error)
 			pub.publish(str(error))
 		else:
-			print("DeltaX not working")		
+			print("Gap to small")		
 
 
 

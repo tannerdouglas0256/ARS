@@ -12,7 +12,7 @@ angle = 0
 def drive(speed, steering):
 	drive_msg_stamped = AckermannDriveStamped()
 	drive_msg = AckermannDrive()
-       	drive_msg.speed = 1.0
+       	drive_msg.speed = speed
         drive_msg.steering_angle = steering
         drive_msg.acceleration = 0
         drive_msg.jerk = 0
@@ -24,9 +24,9 @@ def getOutputZed(error):
 	global steeringErrorsZed
 
 	# PID Constants
-	kP = 0.05
+	kP = 0.002
 	kI = 0.0
-	kD = 0.0
+	kD = 0.0012
 
 
 	# Calculate new PID #PleaseWork!!!
@@ -40,7 +40,7 @@ def getOutputZed(error):
 			integral = 0
 		derivative = error - steeringErrorsZed[-2]
 		steeringErrorsZed += [error]
-		speed = (kP * error) + (kI * integral) + (kD * derivative)
+		speed = (kP * error) + (kI * integral) - (kD * derivative)
 		# Result can only be between -1 and 1
 		if(speed > 1):
 			speed = 1
@@ -53,9 +53,9 @@ def getOutputLidar(error):
 
 	print ("ERROR", error)
 	# PID Constants
-	kP = 0.7
+	kP = 0.4
 	kI = 0.0
-	kD = 0.0
+	kD = 0.15
 
 	# Calculate new PID #PleaseWork!!!
 	while(True):
@@ -77,10 +77,10 @@ def getOutputLidar(error):
 		return turn
 def followLine(data):
 	global steeringErrorsZed
-	speed = 0.8
+	speed = 0.2
 	global angle
 	angle = float(data.data)
-	error = 260 - angle
+	error = 290 - angle
 
 	# Add to error array
 	steeringErrorsZed += [error]
@@ -105,12 +105,13 @@ def followWall(data):
 		print("STOP")
 	else:
 		lidarSteering = float(data.data)
-		if(angle):
-			drive(0.5, zed_result)
-		else:
-			print("LIDARSTEERING: ", lidarSteering)
-			lidarOutput = getOutputLidar(lidarSteering)
-			drive(0.5, lidarOutput)	
+		#if(angle):
+
+			#drive(0.4, zed_result)
+#		else:
+		print("LIDARSTEERING: ", lidarSteering)
+		lidarOutput = getOutputLidar(lidarSteering)
+		drive(0.5, lidarOutput)	
 
 def listener():
 	rp.init_node("VESC_Steering", anonymous = False)
