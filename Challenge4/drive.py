@@ -8,6 +8,8 @@ steeringErrorsLidar = [0]
 lidarSteering = 0
 zed_result = 0
 angle = 0
+red = 0
+green = 0
 
 def drive(speed, steering):
 	drive_msg_stamped = AckermannDriveStamped()
@@ -75,10 +77,47 @@ def getOutputLidar(error):
 		elif(turn < -1):
 			turn = -1
 		return turn
+
+def shortcut(data):
+	global steeringErrorsZed, green
+	green = float(data.data)
+	error = 290 - green
+
+	# Add to error array
+	steeringErrorsZed += [error]
+	
+	# Only store previous 100 errors
+	if(len(steeringErrorsZed)>100):
+		steeringErrorsZed = steeringErrorsZed[1:]
+	
+	# Send Error to PID
+	global zed_result
+	zed_result = getOutputZed(error)
+	print("Angle: " + str(angle))
+	print("Error: " + str(error))
+	print("Steering: " + str(getOutputZed(error)))
+
+def stop(data):
+	global steeringErrorsZed, red
+	red = float(data.data)
+	error = 290 - red
+
+	# Add to error array
+	steeringErrorsZed += [error]
+	
+	# Only store previous 100 errors
+	if(len(steeringErrorsZed)>100):
+		steeringErrorsZed = steeringErrorsZed[1:]
+	
+	# Send Error to PID
+	global zed_result
+	zed_result = getOutputZed(error)
+	print("Angle: " + str(angle))
+	print("Error: " + str(error))
+	print("Steering: " + str(getOutputZed(error)))
+
 def followLine(data):
-	global steeringErrorsZed
-	speed = 0.2
-	global angle
+	global steeringErrorsZed, angle
 	angle = float(data.data)
 	error = 290 - angle
 
@@ -105,17 +144,24 @@ def followWall(data):
 		print("STOP")
 	else:
 		lidarSteering = float(data.data)
-		#if(angle):
-
-			#drive(0.4, zed_result)
-#		else:
-		print("LIDARSTEERING: ", lidarSteering)
-		lidarOutput = getOutputLidar(lidarSteering)
-		drive(0.5, lidarOutput)	
+		if(red):
+			print("END OF COURSE")
+		elif(green):
+			print("SHORTCUT")
+			drive(0.4, zed_result)
+		elif(angle):
+			print("ZEDSTEERING")
+			drive(0.4, zed_result)
+		else:
+			print("LIDARSTEERING: ", lidarSteering)
+			lidarOutput = getOutputLidar(lidarSteering)
+			drive(0.5, lidarOutput)	
 
 def listener():
 	rp.init_node("VESC_Steering", anonymous = False)
 	rp.Subscriber("CVOutput", String, followLine)
+	rp.Subscriber("shortcut", String, shortcut)	
+	rp.Subscriber("stop", String, stop)
 	rp.Subscriber("Lidar", String, followWall)
 	rate = rp.Rate(60)
 	rp.spin()
