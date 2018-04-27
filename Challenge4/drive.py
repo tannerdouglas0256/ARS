@@ -80,7 +80,7 @@ def followLine(data):
 	speed = 0.2
 	global angle
 	angle = float(data.data)
-	error = 290 - angle
+	error = 240 - angle
 
 	# Add to error array
 	steeringErrorsZed += [error]
