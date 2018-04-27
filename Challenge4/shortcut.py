@@ -28,8 +28,8 @@ def callback(data):
 	gray_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
 
 	# Define range of blue color in HSV
-	lower_green = np.array([25, 29, 0], dtype = "uint8")
-	upper_green = np.array([84, 255, 119], dtype = "uint8")
+	lower_green = np.array([67, 151, 22], dtype = "uint8")
+	upper_green = np.array([87, 226, 101], dtype = "uint8")
 
 	# Mask of blue in the image
 	green_mask = cv2.inRange(hsv_img, lower_green, upper_green)

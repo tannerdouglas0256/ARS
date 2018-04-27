@@ -55,9 +55,9 @@ def getOutputLidar(error):
 
 	print ("ERROR", error)
 	# PID Constants
-	kP = 0.4
+	kP = 0.5
 	kI = 0.0
-	kD = 0.15
+	kD = 0.2
 
 	# Calculate new PID #PleaseWork!!!
 	while(True):
@@ -136,26 +136,28 @@ def followLine(data):
 	print("Steering: " + str(getOutputZed(error)))
 
 def followWall(data):
-	speed = 0.5
-	global lidarSteering, zed_result
+	speed = 1.0
+	global lidarSteering, zed_result, angle
 	
 	#print("STEERING: ", steering)
 	if(data.data == "stop"):
 		print("STOP")
 	else:
 		lidarSteering = float(data.data)
-		if(red):
-			print("END OF COURSE")
-		elif(green):
-			print("SHORTCUT")
-			drive(0.4, zed_result)
-		elif(angle):
+		#if(red):
+		#	print("END OF COURSE")
+		#elif(green):
+		#	print("SHORTCUT")
+		#	drive(speed, zed_result)
+		if(angle != 0):
 			print("ZEDSTEERING")
-			drive(0.4, zed_result)
+			drive(speed, zed_result)
+			angle = 0
 		else:
-			print("LIDARSTEERING: ", lidarSteering)
+			#print("LIDARSTEERING: ", lidarSteering)
 			lidarOutput = getOutputLidar(lidarSteering)
-			drive(0.5, lidarOutput)	
+			print("LIDARSTEERING: ", lidarOutput)
+			drive(speed, lidarOutput)	
 
 def listener():
 	rp.init_node("VESC_Steering", anonymous = False)

@@ -39,8 +39,8 @@ def callback(data):
 	blue_mask = cv2.erode(blue_mask, kernel, iterations = 2)
 
 	# Display the resulting frame
-	cv2.imshow('mask', blue_mask)
-	cv2.waitKey(1)
+	#cv2.imshow('mask', blue_mask)
+	#cv2.waitKey(1)
 
 	# Color thresholding
 	ret,thresh = cv2.threshold(blue_mask, 80, 255, cv2.THRESH_BINARY)
@@ -64,8 +64,8 @@ def callback(data):
 	pub.publish(str(cx))
 
 	# Display the resulting frame
-	cv2.imshow('frame', crop_img)
-	cv2.waitKey(1)
+	#cv2.imshow('frame', crop_img)
+	#cv2.waitKey(1)
 
 def listener():
 	rp.init_node("OpenCV", anonymous = True)
